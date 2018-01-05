@@ -635,7 +635,6 @@ public class BtcWalletService extends WalletService {
     }
 
     public Transaction getFeeEstimationTransactionForMultipleAddresses(Set<String> fromAddresses,
-                                                                       String toAddress,
                                                                        Coin amount)
             throws AddressFormatException, AddressEntryException, InsufficientFundsException {
         Set<AddressEntry> addressEntries = fromAddresses.stream()
@@ -667,7 +666,8 @@ public class BtcWalletService extends WalletService {
                 final Coin defaultMinFee = BisqEnvironment.getBaseCurrencyNetwork().getDefaultMinFee();
                 if (fee.compareTo(defaultMinFee) < 0)
                     fee = defaultMinFee;
-                SendRequest sendRequest = getSendRequestForMultipleAddresses(fromAddresses, toAddress, amount, fee, null, aesKey);
+                // We use a dummy address for the output
+                SendRequest sendRequest = getSendRequestForMultipleAddresses(fromAddresses, getOrCreateAddressEntry(AddressEntry.Context.AVAILABLE).getAddressString(), amount, fee, null, aesKey);
                 wallet.completeTx(sendRequest);
                 tx = sendRequest.tx;
                 txSize = tx.bitcoinSerialize().length;
@@ -757,11 +757,16 @@ public class BtcWalletService extends WalletService {
                                                            Coin fee,
                                                            @Nullable String changeAddress,
                                                            @Nullable KeyParameter aesKey) throws
-            AddressFormatException, AddressEntryException {
+            AddressFormatException, AddressEntryException, InsufficientMoneyException {
         Transaction tx = new Transaction(params);
         checkArgument(Restrictions.isAboveDust(amount),
                 "The amount is too low (dust limit).");
-        tx.addOutput(amount.subtract(fee), Address.fromBase58(params, toAddress));
+
+        final Coin netValue = amount.subtract(fee);
+        if(netValue.isNegative())
+            throw new InsufficientMoneyException(netValue.multiply(-1), "The mining fee for that transaction exceed the available amount.");
+
+        tx.addOutput(netValue, Address.fromBase58(params, toAddress));
 
         SendRequest sendRequest = SendRequest.forTx(tx);
         sendRequest.fee = fee;

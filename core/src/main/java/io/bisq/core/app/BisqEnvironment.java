@@ -80,6 +80,7 @@ public class BisqEnvironment extends StandardEnvironment {
     private static final String BISQ_CLASSPATH_PROPERTY_SOURCE_NAME = "bisqClasspathProperties";
 
     private static String staticAppDataDir;
+
     public static String getStaticAppDataDir() {
         return staticAppDataDir;
     }
@@ -89,7 +90,7 @@ public class BisqEnvironment extends StandardEnvironment {
         return BaseCurrencyNetwork.BTC_MAINNET;
     }
 
-    private static BaseCurrencyNetwork baseCurrencyNetwork = getDefaultBaseCurrencyNetwork();
+    protected static BaseCurrencyNetwork baseCurrencyNetwork = getDefaultBaseCurrencyNetwork();
 
     public static boolean isDAOActivatedAndBaseCurrencySupportingBsq() {
         //noinspection ConstantConditions,PointlessBooleanExpression
@@ -163,25 +164,23 @@ public class BisqEnvironment extends StandardEnvironment {
     // Instance fields
     ///////////////////////////////////////////////////////////////////////////////////////////
 
-    private final ResourceLoader resourceLoader = new DefaultResourceLoader();
+    protected final ResourceLoader resourceLoader = new DefaultResourceLoader();
 
-    private final String appName;
-    private final String userDataDir;
-    private final String appDataDir;
-    private final String btcNetworkDir;
-    private final String logLevel, providers;
+    protected final String appName;
+    protected final String userDataDir;
+    protected final String appDataDir;
+    protected final String btcNetworkDir, userAgent;
+    protected final String logLevel, providers;
     @Getter
     @Setter
-    private boolean isBitcoinLocalhostNodeRunning;
+    protected boolean isBitcoinLocalhostNodeRunning;
     @Getter
-    private List<String> bannedPriceRelayNodes;
-    @Getter
-    private List<String> bannedSeedNodes;
+    protected List<String> bannedSeedNodes, bannedBtcNodes, bannedPriceRelayNodes;
 
-    private final String btcNodes, seedNodes, ignoreDevMsg, useTorForBtc, rpcUser, rpcPassword,
+    protected final String btcNodes, seedNodes, ignoreDevMsg, useTorForBtc, rpcUser, rpcPassword,
             rpcPort, rpcBlockNotificationPort, dumpBlockchainData, fullDaoNode,
             myAddress, banList, dumpStatistics, maxMemory, socks5ProxyBtcAddress,
-            socks5ProxyHttpAddress;
+            socks5ProxyHttpAddress, useAllProvidedNodes, numConnectionForBtc;
 
 
     public BisqEnvironment(OptionSet options) {
@@ -268,6 +267,15 @@ public class BisqEnvironment extends StandardEnvironment {
         useTorForBtc = commandLineProperties.containsProperty(BtcOptionKeys.USE_TOR_FOR_BTC) ?
                 (String) commandLineProperties.getProperty(BtcOptionKeys.USE_TOR_FOR_BTC) :
                 "";
+        userAgent = commandLineProperties.containsProperty(BtcOptionKeys.USER_AGENT) ?
+                (String) commandLineProperties.getProperty(BtcOptionKeys.USER_AGENT) :
+                "Bisq";
+        useAllProvidedNodes = commandLineProperties.containsProperty(BtcOptionKeys.USE_ALL_PROVIDED_NODES) ?
+                (String) commandLineProperties.getProperty(BtcOptionKeys.USE_ALL_PROVIDED_NODES) :
+                "false";
+        numConnectionForBtc = commandLineProperties.containsProperty(BtcOptionKeys.NUM_CONNECTIONS_FOR_BTC) ?
+                (String) commandLineProperties.getProperty(BtcOptionKeys.NUM_CONNECTIONS_FOR_BTC) :
+                "9";
 
         MutablePropertySources propertySources = this.getPropertySources();
         propertySources.addFirst(commandLineProperties);
@@ -279,6 +287,9 @@ public class BisqEnvironment extends StandardEnvironment {
 
             final String bannedSeedNodesAsString = getProperty(FilterManager.BANNED_SEED_NODES, "");
             bannedSeedNodes = !bannedSeedNodesAsString.isEmpty() ? Arrays.asList(StringUtils.deleteWhitespace(bannedSeedNodesAsString).split(",")) : null;
+
+            final String bannedBtcNodesAsString = getProperty(FilterManager.BANNED_BTC_NODES, "");
+            bannedBtcNodes = !bannedBtcNodesAsString.isEmpty() ? Arrays.asList(StringUtils.deleteWhitespace(bannedBtcNodesAsString).split(",")) : null;
 
             baseCurrencyNetwork = BaseCurrencyNetwork.valueOf(getProperty(BtcOptionKeys.BASE_CURRENCY_NETWORK,
                     getDefaultBaseCurrencyNetwork().name()).toUpperCase());
@@ -305,11 +316,15 @@ public class BisqEnvironment extends StandardEnvironment {
         setProperty(FilterManager.BANNED_SEED_NODES, bannedNodes == null ? "" : String.join(",", bannedNodes));
     }
 
+    public void saveBannedBtcNodes(@Nullable List<String> bannedNodes) {
+        setProperty(FilterManager.BANNED_BTC_NODES, bannedNodes == null ? "" : String.join(",", bannedNodes));
+    }
+
     public void saveBannedPriceRelayNodes(@Nullable List<String> bannedNodes) {
         setProperty(FilterManager.BANNED_PRICE_RELAY_NODES, bannedNodes == null ? "" : String.join(",", bannedNodes));
     }
 
-    private void setProperty(String key, String value) {
+    protected void setProperty(String key, String value) {
         try {
             Resource resource = getAppDirPropertiesResource();
             File file = resource.getFile();
@@ -401,6 +416,9 @@ public class BisqEnvironment extends StandardEnvironment {
                 setProperty(BtcOptionKeys.BTC_NODES, btcNodes);
                 setProperty(BtcOptionKeys.USE_TOR_FOR_BTC, useTorForBtc);
                 setProperty(BtcOptionKeys.WALLET_DIR, btcNetworkDir);
+                setProperty(BtcOptionKeys.USER_AGENT, userAgent);
+                setProperty(BtcOptionKeys.USE_ALL_PROVIDED_NODES, useAllProvidedNodes);
+                setProperty(BtcOptionKeys.NUM_CONNECTIONS_FOR_BTC, numConnectionForBtc);
 
                 setProperty(UserAgent.NAME_KEY, appName);
                 setProperty(UserAgent.VERSION_KEY, Version.VERSION);

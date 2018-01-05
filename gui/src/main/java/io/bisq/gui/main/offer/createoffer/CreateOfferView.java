@@ -26,7 +26,6 @@ import io.bisq.common.locale.TradeCurrency;
 import io.bisq.common.util.Tuple2;
 import io.bisq.common.util.Tuple3;
 import io.bisq.common.util.Utilities;
-import io.bisq.core.app.BisqEnvironment;
 import io.bisq.core.offer.Offer;
 import io.bisq.core.offer.OfferPayload;
 import io.bisq.core.payment.PaymentAccount;
@@ -48,6 +47,7 @@ import io.bisq.gui.main.funds.FundsView;
 import io.bisq.gui.main.funds.withdrawal.WithdrawalView;
 import io.bisq.gui.main.offer.OfferView;
 import io.bisq.gui.main.overlays.popups.Popup;
+import io.bisq.gui.main.overlays.windows.FeeOptionWindow;
 import io.bisq.gui.main.overlays.windows.OfferDetailsWindow;
 import io.bisq.gui.main.overlays.windows.QRCodeWindow;
 import io.bisq.gui.main.portfolio.PortfolioView;
@@ -95,34 +95,32 @@ public class CreateOfferView extends ActivatableViewAndModel<AnchorPane, CreateO
 
     private ScrollPane scrollPane;
     private GridPane gridPane;
-    private TitledGroupBg payFundsTitledGroupBg;
+    private TitledGroupBg payFundsTitledGroupBg, setDepositTitledGroupBg;
     private BusyAnimation waitingForFundsBusyAnimation;
     private Button nextButton, cancelButton1, cancelButton2, placeOfferButton;
-    private ToggleButton fixedPriceButton, useMarketBasedPriceButton, payFeeInBsqButton, payFeeInBtcButton;
+    private ToggleButton fixedPriceButton, useMarketBasedPriceButton;
     private InputTextField buyerSecurityDepositInputTextField, amountTextField, minAmountTextField,
-        fixedPriceTextField, marketBasedPriceTextField, volumeTextField;
-    private TextField currencyTextField, makerFeeTextField, sellerSecurityDepositTextField;
+            fixedPriceTextField, marketBasedPriceTextField, volumeTextField;
+    private TextField currencyTextField;
     private AddressTextField addressTextField;
     private BalanceTextField balanceTextField;
     private TextFieldWithCopyIcon totalToPayTextField;
-    private Label directionLabel, amountDescriptionLabel, addressLabel, balanceLabel,
-        totalToPayLabel, totalToPayInfoIconLabel, amountBtcLabel, priceCurrencyLabel,
-        volumeCurrencyLabel, minAmountBtcLabel, priceDescriptionLabel,
-        volumeDescriptionLabel, currencyTextFieldLabel, makerFeeTextLabel, buyerSecurityDepositLabel,
-        currencyComboBoxLabel, waitingForFundsLabel, marketBasedPriceLabel, xLabel,
-        sellerSecurityDepositBtcLabel, sellerSecurityDepositLabel, buyerSecurityDepositBtcLabel, makerFeeCurrencyLabel;
+    private Label directionLabel, amountDescriptionLabel, addressLabel, balanceLabel, totalToPayLabel,
+            totalToPayInfoIconLabel, priceCurrencyLabel, volumeCurrencyLabel, priceDescriptionLabel,
+            volumeDescriptionLabel, currencyTextFieldLabel, buyerSecurityDepositLabel, currencyComboBoxLabel,
+            waitingForFundsLabel, marketBasedPriceLabel, xLabel;
     private ComboBox<PaymentAccount> paymentAccountsComboBox;
     private ComboBox<TradeCurrency> currencyComboBox;
     private PopOver totalToPayInfoPopover;
     private ImageView imageView, qrCodeImageView;
     private VBox fixedPriceBox, percentagePriceBox;
-    private HBox fundingHBox, firstRowHBox, secondRowHBox, toggleButtonsHBox, makerFeeRowHBox,
-        buyerSecurityDepositValueCurrencyBox, sellerSecurityDepositValueCurrencyBox;
+    private HBox fundingHBox, firstRowHBox, secondRowHBox, toggleButtonsHBox,
+            buyerSecurityDepositValueCurrencyBox;
 
     private Subscription isWaitingForFundsSubscription, balanceSubscription, cancelButton2StyleSubscription;
     private ChangeListener<Boolean> amountFocusedListener, minAmountFocusedListener, volumeFocusedListener,
-        buyerSecurityDepositFocusedListener, priceFocusedListener, placeOfferCompletedListener,
-        priceAsPercentageFocusedListener;
+            buyerSecurityDepositFocusedListener, priceFocusedListener, placeOfferCompletedListener,
+            priceAsPercentageFocusedListener;
     private ChangeListener<String> tradeCurrencyCodeListener, errorMessageListener;
     private ChangeListener<Number> marketPriceAvailableListener;
     private EventHandler<ActionEvent> currencyComboBoxSelectionHandler, paymentAccountsComboBoxSelectionHandler;
@@ -168,7 +166,7 @@ public class CreateOfferView extends ActivatableViewAndModel<AnchorPane, CreateO
                 TradeCurrency singleTradeCurrency = paymentAccount.getSingleTradeCurrency();
                 String code = singleTradeCurrency != null ? singleTradeCurrency.getCode() : "";
                 return paymentAccount.getAccountName() + " (" + code + ", " +
-                    Res.get(paymentAccount.getPaymentMethod().getId()) + ")";
+                        Res.get(paymentAccount.getPaymentMethod().getId()) + ")";
             }
 
             @Override
@@ -193,9 +191,6 @@ public class CreateOfferView extends ActivatableViewAndModel<AnchorPane, CreateO
             addBindings();
             addListeners();
             addSubscriptions();
-
-            if (sellerSecurityDepositTextField != null)
-                sellerSecurityDepositTextField.setText(model.sellerSecurityDeposit);
 
             if (waitingForFundsBusyAnimation != null)
                 waitingForFundsBusyAnimation.play();
@@ -248,13 +243,13 @@ public class CreateOfferView extends ActivatableViewAndModel<AnchorPane, CreateO
 
         if (!result) {
             new Popup<>().headLine(Res.get("popup.warning.noTradingAccountSetup.headline"))
-                .instruction(Res.get("popup.warning.noTradingAccountSetup.msg"))
-                .actionButtonTextWithGoTo("navigation.account")
-                .onAction(() -> {
-                    navigation.setReturnPath(navigation.getCurrentPath());
-                    //noinspection unchecked
-                    navigation.navigateTo(MainView.class, AccountView.class, AccountSettingsView.class, FiatAccountsView.class);
-                }).show();
+                    .instruction(Res.get("popup.warning.noTradingAccountSetup.msg"))
+                    .actionButtonTextWithGoTo("navigation.account")
+                    .onAction(() -> {
+                        navigation.setReturnPath(navigation.getCurrentPath());
+                        //noinspection unchecked
+                        navigation.navigateTo(MainView.class, AccountView.class, AccountSettingsView.class, FiatAccountsView.class);
+                    }).show();
         }
 
         if (direction == OfferPayload.Direction.BUY) {
@@ -274,13 +269,9 @@ public class CreateOfferView extends ActivatableViewAndModel<AnchorPane, CreateO
         }
 
         updateMarketPriceAvailable();
-        if (model.dataModel.isMakerFeeValid()) {
-            updateFeeToggleButtons(model.dataModel.isCurrencyForMakerFeeBtc());
-        } else {
-            if (model.dataModel.getMakerFee() != null)
-                showInsufficientBsqFundsForBtcFeePaymentPopup();
-            updateFeeToggleButtons(true);
-        }
+
+        if (!model.dataModel.isMakerFeeValid() && model.dataModel.getMakerFee() != null)
+            showInsufficientBsqFundsForBtcFeePaymentPopup();
     }
 
     // called form parent as the view does not get notified when the tab is closed
@@ -289,13 +280,13 @@ public class CreateOfferView extends ActivatableViewAndModel<AnchorPane, CreateO
         if (model.dataModel.getBalance().get().isPositive() && !model.placeOfferCompleted.get()) {
             model.dataModel.swapTradeToSavings();
             String key = "CreateOfferCancelAndFunded";
-            if (model.dataModel.getPreferences().showAgain(key)) {
+            if (model.dataModel.preferences.showAgain(key)) {
                 //noinspection unchecked
                 new Popup<>().information(Res.get("createOffer.alreadyFunded"))
-                    .actionButtonTextWithGoTo("navigation.funds.availableForWithdrawal")
-                    .onAction(() -> navigation.navigateTo(MainView.class, FundsView.class, WithdrawalView.class))
-                    .dontShowAgainId(key)
-                    .show();
+                        .actionButtonTextWithGoTo("navigation.funds.availableForWithdrawal")
+                        .onAction(() -> navigation.navigateTo(MainView.class, FundsView.class, WithdrawalView.class))
+                        .dontShowAgainId(key)
+                        .show();
             }
         }
     }
@@ -317,8 +308,8 @@ public class CreateOfferView extends ActivatableViewAndModel<AnchorPane, CreateO
                     //noinspection PointlessBooleanExpression
                     if (!DevEnv.DEV_MODE) {
                         offerDetailsWindow.onPlaceOffer(() ->
-                            model.onPlaceOffer(offer, offerDetailsWindow::hide))
-                            .show(offer);
+                                model.onPlaceOffer(offer, offerDetailsWindow::hide))
+                                .show(offer);
                     } else {
                         balanceSubscription.unsubscribe();
                         model.onPlaceOffer(offer, () -> {
@@ -326,13 +317,13 @@ public class CreateOfferView extends ActivatableViewAndModel<AnchorPane, CreateO
                     }
                 } else {
                     new Popup<>().headLine(Res.get("popup.warning.noArbitratorSelected.headline"))
-                        .instruction(Res.get("popup.warning.noArbitratorSelected.msg"))
-                        .actionButtonTextWithGoTo("navigation.arbitratorSelection")
-                        .onAction(() -> {
-                            navigation.setReturnPath(navigation.getCurrentPath());
-                            //noinspection unchecked
-                            navigation.navigateTo(MainView.class, AccountView.class, AccountSettingsView.class, ArbitratorSelectionView.class);
-                        }).show();
+                            .instruction(Res.get("popup.warning.noArbitratorSelected.msg"))
+                            .actionButtonTextWithGoTo("navigation.arbitratorSelection")
+                            .onAction(() -> {
+                                navigation.setReturnPath(navigation.getCurrentPath());
+                                //noinspection unchecked
+                                navigation.navigateTo(MainView.class, AccountView.class, AccountSettingsView.class, ArbitratorSelectionView.class);
+                            }).show();
                 }
             } else {
                 showInsufficientBsqFundsForBtcFeePaymentPopup();
@@ -347,7 +338,7 @@ public class CreateOfferView extends ActivatableViewAndModel<AnchorPane, CreateO
         String message = null;
         if (makerFee != null) {
             message = Res.get("popup.warning.insufficientBsqFundsForBtcFeePayment",
-                bsqFormatter.formatCoinWithCode(makerFee.subtract(model.dataModel.getBsqBalance())));
+                    bsqFormatter.formatCoinWithCode(makerFee.subtract(model.dataModel.getBsqBalance())));
 
         } else if (model.dataModel.getBsqBalance().isZero())
             message = Res.get("popup.warning.noBsqFundsForBtcFeePayment");
@@ -355,12 +346,28 @@ public class CreateOfferView extends ActivatableViewAndModel<AnchorPane, CreateO
         if (message != null)
             //noinspection unchecked
             new Popup<>().warning(message)
-                .actionButtonTextWithGoTo("navigation.dao.wallet.receive")
-                .onAction(() -> navigation.navigateTo(MainView.class, DaoView.class, BsqWalletView.class, BsqReceiveView.class))
-                .show();
+                    .actionButtonTextWithGoTo("navigation.dao.wallet.receive")
+                    .onAction(() -> navigation.navigateTo(MainView.class, DaoView.class, BsqWalletView.class, BsqReceiveView.class))
+                    .show();
     }
 
     private void onShowPayFundsScreen() {
+        nextButton.setVisible(false);
+        nextButton.setManaged(false);
+        nextButton.setOnAction(null);
+        cancelButton1.setVisible(false);
+        cancelButton1.setManaged(false);
+        cancelButton1.setOnAction(null);
+
+        int delay = 500;
+        int diff = 100;
+
+        transitions.fadeOutAndRemove(setDepositTitledGroupBg, delay, (event) -> {
+        });
+        delay -= diff;
+        transitions.fadeOutAndRemove(buyerSecurityDepositLabel, delay);
+        transitions.fadeOutAndRemove(buyerSecurityDepositValueCurrencyBox, delay);
+
         model.onShowPayFundsScreen();
 
         editOfferElements.stream().forEach(node -> {
@@ -374,26 +381,26 @@ public class CreateOfferView extends ActivatableViewAndModel<AnchorPane, CreateO
         if (!DevEnv.DEV_MODE) {
             String key = "securityDepositInfo";
             new Popup<>().backgroundInfo(Res.get("popup.info.securityDepositInfo"))
-                .actionButtonText(Res.get("shared.faq"))
-                .onAction(() -> GUIUtil.openWebPage("https://bisq.network/faq#6"))
-                .useIUnderstandButton()
-                .dontShowAgainId(key)
-                .show();
+                    .actionButtonText(Res.get("shared.faq"))
+                    .onAction(() -> GUIUtil.openWebPage("https://bisq.network/faq#6"))
+                    .useIUnderstandButton()
+                    .dontShowAgainId(key)
+                    .show();
 
             key = "createOfferFundWalletInfo";
             String tradeAmountText = model.isSellOffer() ?
-                Res.get("createOffer.createOfferFundWalletInfo.tradeAmount", model.getTradeAmount()) : "";
+                    Res.get("createOffer.createOfferFundWalletInfo.tradeAmount", model.getTradeAmount()) : "";
             String message = Res.get("createOffer.createOfferFundWalletInfo.msg",
-                model.totalToPay.get(),
-                tradeAmountText,
-                model.getSecurityDepositInfo(),
-                model.getMakerFee(),
-                model.getTxFee()
+                    model.totalToPay.get(),
+                    tradeAmountText,
+                    model.getSecurityDepositInfo(),
+                    model.getMakerFee(),
+                    model.getTxFee()
             );
             new Popup<>().headLine(Res.get("createOffer.createOfferFundWalletInfo.headline"))
-                .instruction(message)
-                .dontShowAgainId(key)
-                .show();
+                    .instruction(message)
+                    .dontShowAgainId(key)
+                    .show();
         }
 
         waitingForFundsBusyAnimation.play();
@@ -408,26 +415,25 @@ public class CreateOfferView extends ActivatableViewAndModel<AnchorPane, CreateO
         balanceLabel.setVisible(true);
         balanceTextField.setVisible(true);
         cancelButton2.setVisible(true);
-        //root.requestFocus();
 
         setupTotalToPayInfoIconLabel();
 
         final byte[] imageBytes = QRCode
-            .from(getBitcoinURI())
-            .withSize(98, 98) // code has 41 elements 8 px is border with 98 we get double scale and min. border
-            .to(ImageType.PNG)
-            .stream()
-            .toByteArray();
+                .from(getBitcoinURI())
+                .withSize(98, 98) // code has 41 elements 8 px is border with 98 we get double scale and min. border
+                .to(ImageType.PNG)
+                .stream()
+                .toByteArray();
         Image qrImage = new Image(new ByteArrayInputStream(imageBytes));
         qrCodeImageView.setImage(qrImage);
     }
 
     private void maybeShowClearXchangeWarning(PaymentAccount paymentAccount) {
         if (paymentAccount.getPaymentMethod().getId().equals(PaymentMethod.CLEAR_X_CHANGE_ID) &&
-            !clearXchangeWarningDisplayed) {
+                !clearXchangeWarningDisplayed) {
             clearXchangeWarningDisplayed = true;
             UserThread.runAfter(GUIUtil::showClearXchangeWarning,
-                500, TimeUnit.MILLISECONDS);
+                    500, TimeUnit.MILLISECONDS);
         }
     }
 
@@ -499,11 +505,6 @@ public class CreateOfferView extends ActivatableViewAndModel<AnchorPane, CreateO
         addressTextField.amountAsCoinProperty().bind(model.dataModel.getMissingCoin());
         buyerSecurityDepositInputTextField.textProperty().bindBidirectional(model.buyerSecurityDeposit);
 
-        if (model.dataModel.isBsqForFeeAvailable()) {
-            makerFeeTextField.textProperty().bind(model.makerFee);
-            makerFeeCurrencyLabel.textProperty().bind(model.makerFeeCurrencyCode);
-        }
-
         // Validation
         amountTextField.validationResultProperty().bind(model.amountValidationResult);
         minAmountTextField.validationResultProperty().bind(model.minAmountValidationResult);
@@ -552,11 +553,6 @@ public class CreateOfferView extends ActivatableViewAndModel<AnchorPane, CreateO
         addressTextField.amountAsCoinProperty().unbind();
         buyerSecurityDepositInputTextField.textProperty().unbindBidirectional(model.buyerSecurityDeposit);
 
-        if (model.dataModel.isBsqForFeeAvailable()) {
-            makerFeeTextField.textProperty().unbind();
-            makerFeeCurrencyLabel.textProperty().unbind();
-        }
-
         // Validation
         amountTextField.validationResultProperty().unbind();
         minAmountTextField.validationResultProperty().unbind();
@@ -592,7 +588,7 @@ public class CreateOfferView extends ActivatableViewAndModel<AnchorPane, CreateO
         });
 
         cancelButton2StyleSubscription = EasyBind.subscribe(placeOfferButton.visibleProperty(),
-            isVisible -> cancelButton2.setId(isVisible ? "cancel-button" : null));
+                isVisible -> cancelButton2.setId(isVisible ? "cancel-button" : null));
 
         balanceSubscription = EasyBind.subscribe(model.dataModel.getBalance(), balanceTextField::setBalance);
     }
@@ -632,31 +628,8 @@ public class CreateOfferView extends ActivatableViewAndModel<AnchorPane, CreateO
         errorMessageListener = (o, oldValue, newValue) -> {
             if (newValue != null)
                 UserThread.runAfter(() -> new Popup<>().error(Res.get("createOffer.amountPriceBox.error.message", model.errorMessage.get()))
-                    .show(), 100, TimeUnit.MILLISECONDS);
+                        .show(), 100, TimeUnit.MILLISECONDS);
         };
-
-       /* feeFromFundingTxListener = (observable, oldValue, newValue) -> {
-            log.debug("feeFromFundingTxListener " + newValue);
-            if (!model.dataModel.isFeeFromFundingTxSufficient()) {
-                new Popup<>().warning("The mining fee from your funding transaction is not sufficiently high.\n\n" +
-                        "You need to use at least a mining fee of " +
-                        model.formatter.formatCoinWithCode(FeePolicy.getMinRequiredFeeForFundingTx()) + ".\n\n" +
-                        "The fee used in your funding transaction was only " +
-                        model.formatter.formatCoinWithCode(newValue) + ".\n\n" +
-                        "The trade transactions might take too much time to be included in " +
-                        "a block if the fee is too low.\n" +
-                        "Please check at your external wallet that you set the required fee and " +
-                        "do a funding again with the correct fee.\n\n" +
-                        "In the \"Funds/Open for withdrawal\" section you can withdraw those funds.")
-                        .closeButtonText(Res.get("shared.close"))
-                        .onClose(() -> {
-                            close();
-                            model.dataModel.swapTradeToSavings();
-                            navigation.navigateTo(MainView.class, FundsView.class, WithdrawalView.class);
-                        })
-                        .show();
-            }
-        };*/
 
         paymentAccountsComboBoxSelectionHandler = e -> onPaymentAccountsComboBoxSelected();
         currencyComboBoxSelectionHandler = e -> onCurrencyComboBoxSelected();
@@ -675,20 +648,20 @@ public class CreateOfferView extends ActivatableViewAndModel<AnchorPane, CreateO
                 String key = "createOfferSuccessInfo";
                 if (DontShowAgainLookup.showAgain(key)) {
                     UserThread.runAfter(() -> new Popup<>().headLine(Res.get("createOffer.success.headline"))
-                            .feedback(Res.get("createOffer.success.info"))
-                            .dontShowAgainId(key)
-                            .actionButtonTextWithGoTo("navigation.portfolio.myOpenOffers")
-                            .onAction(() -> {
-                                //noinspection unchecked
-                                UserThread.runAfter(() ->
-                                        navigation.navigateTo(MainView.class, PortfolioView.class,
-                                            OpenOffersView.class),
-                                    100, TimeUnit.MILLISECONDS);
-                                close();
-                            })
-                            .onClose(this::close)
-                            .show(),
-                        1);
+                                    .feedback(Res.get("createOffer.success.info"))
+                                    .dontShowAgainId(key)
+                                    .actionButtonTextWithGoTo("navigation.portfolio.myOpenOffers")
+                                    .onAction(() -> {
+                                        //noinspection unchecked
+                                        UserThread.runAfter(() ->
+                                                        navigation.navigateTo(MainView.class, PortfolioView.class,
+                                                                OpenOffersView.class),
+                                                100, TimeUnit.MILLISECONDS);
+                                        close();
+                                    })
+                                    .onClose(this::close)
+                                    .show(),
+                            1);
                 } else {
                     close();
                 }
@@ -855,22 +828,12 @@ public class CreateOfferView extends ActivatableViewAndModel<AnchorPane, CreateO
     }
 
     private void addOptionsGroup() {
-        final boolean bsqForFeeAvailable = model.dataModel.isBsqForFeeAvailable();
-        final String title = bsqForFeeAvailable ?
-            Res.get("createOffer.feeCurrencyAndDeposit") : Res.get("createOffer.setDeposit");
-        TitledGroupBg titledGroupBg = addTitledGroupBg(gridPane, ++gridRow, bsqForFeeAvailable ? 3 : 2, title, Layout.GROUP_DISTANCE);
-        //  GridPane.setColumnSpan(titledGroupBg, bsqForFeeAvailable ? 3 : 2);
-
-        if (bsqForFeeAvailable)
-            addMakerFeeRow();
+        setDepositTitledGroupBg = addTitledGroupBg(gridPane, ++gridRow, 2, Res.get("createOffer.setDeposit"), Layout.GROUP_DISTANCE);
 
         addBuyerSecurityDepositRow();
 
-        // Let's hide that as the user cannot edit it anyway...
-        // addSellerSecurityDepositRow();
-
         Tuple2<Button, Button> tuple = add2ButtonsAfterGroup(gridPane, ++gridRow,
-            Res.get("shared.nextStep"), Res.get("shared.cancel"));
+                Res.get("shared.nextStep"), Res.get("shared.cancel"));
         nextButton = tuple.first;
         editOfferElements.add(nextButton);
         nextButton.disableProperty().bind(model.isNextButtonDisabled);
@@ -886,109 +849,47 @@ public class CreateOfferView extends ActivatableViewAndModel<AnchorPane, CreateO
         GridPane.setMargin(nextButton, new Insets(-35, 0, 0, 0));
         nextButton.setOnAction(e -> {
             if (model.isPriceInRange()) {
-                nextButton.setVisible(false);
-                nextButton.setManaged(false);
-                nextButton.setOnAction(null);
-                cancelButton1.setVisible(false);
-                cancelButton1.setManaged(false);
-                cancelButton1.setOnAction(null);
-
-                int delay = 500;
-                int diff = 100;
-                transitions.fadeOutAndRemove(titledGroupBg, delay, (event) -> onShowPayFundsScreen());
-                if (model.dataModel.isBsqForFeeAvailable()) {
-                    delay -= diff;
-                    transitions.fadeOutAndRemove(makerFeeTextLabel, delay);
-                    transitions.fadeOutAndRemove(makerFeeRowHBox, delay);
-                }
-                delay -= diff;
-                transitions.fadeOutAndRemove(buyerSecurityDepositLabel, delay);
-                transitions.fadeOutAndRemove(buyerSecurityDepositValueCurrencyBox, delay);
-
-                // We hide that, but leave it in code as it might be reconsidered to show it
-                /*
-                delay -= diff;
-                transitions.fadeOutAndRemove(sellerSecurityDepositLabel, delay);
-                transitions.fadeOutAndRemove(sellerSecurityDepositValueCurrencyBox, delay);*/
+                if (DevEnv.DAO_TRADING_ACTIVATED)
+                    showFeeOption();
+                else
+                    onShowPayFundsScreen();
             }
         });
     }
 
-    private void addMakerFeeRow() {
-        makerFeeTextLabel = addLabel(gridPane, gridRow, Res.getWithCol("createOffer.currencyForFee"),
-            Layout.FIRST_ROW_AND_GROUP_DISTANCE);
+    private void showFeeOption() {
+        Coin makerFee = model.dataModel.getMakerFee(false);
+        String missingBsq = null;
+        if (makerFee != null) {
+            missingBsq = Res.get("popup.warning.insufficientBsqFundsForBtcFeePayment",
+                    bsqFormatter.formatCoinWithCode(makerFee.subtract(model.dataModel.getBsqBalance())));
 
-        Tuple3<HBox, TextField, Label> makerFeeValueCurrencyBoxTuple = getNonEditableValueCurrencyBox();
-        HBox makerFeeValueCurrencyBox = makerFeeValueCurrencyBoxTuple.first;
-        makerFeeTextField = makerFeeValueCurrencyBoxTuple.second;
-        makerFeeTextField.setPrefWidth(170);
-        makerFeeCurrencyLabel = makerFeeValueCurrencyBoxTuple.third;
+        } else if (model.dataModel.getBsqBalance().isZero())
+            missingBsq = Res.get("popup.warning.noBsqFundsForBtcFeePayment");
 
-        ToggleGroup feeToggleGroup = new ToggleGroup();
-        payFeeInBsqButton = new ToggleButton("BSQ");
-        payFeeInBsqButton.setPrefWidth(70);
-        editOfferElements.add(payFeeInBsqButton);
-        payFeeInBsqButton.setId("toggle-price-left");
-        payFeeInBsqButton.setToggleGroup(feeToggleGroup);
-        payFeeInBsqButton.selectedProperty().addListener((ov, oldValue, newValue) -> {
-            if (newValue && model.dataModel.isBsqForFeeAvailable())
-                updateFeeToggleButtons(false);
-            else
-                updateFeeToggleButtons(true);
-        });
-        payFeeInBsqButton.setOnAction(ev -> {
-            if (model.dataModel.isBsqForFeeAvailable()) {
-                updateFeeToggleButtons(false);
-            } else {
-                showInsufficientBsqFundsForBtcFeePaymentPopup();
-                updateFeeToggleButtons(true);
-            }
-        });
-
-        payFeeInBtcButton = new ToggleButton(Res.getBaseCurrencyCode());
-        payFeeInBtcButton.setPrefWidth(payFeeInBsqButton.getPrefWidth());
-        editOfferElements.add(payFeeInBtcButton);
-        payFeeInBtcButton.setId("toggle-price-right");
-        payFeeInBtcButton.setToggleGroup(feeToggleGroup);
-        payFeeInBtcButton.selectedProperty().addListener((ov, oldValue, newValue) -> {
-            updateFeeToggleButtons(newValue);
-        });
-
-        HBox payFeeInBtcToggleButtonsHBox = new HBox();
-        payFeeInBtcToggleButtonsHBox.getChildren().addAll(payFeeInBsqButton, payFeeInBtcButton);
-
-        makerFeeRowHBox = new HBox();
-        makerFeeRowHBox.setSpacing(5);
-        makerFeeRowHBox.setAlignment(Pos.CENTER_LEFT);
-
-        if (BisqEnvironment.isDAOActivatedAndBaseCurrencySupportingBsq())
-            makerFeeRowHBox.getChildren().addAll(makerFeeValueCurrencyBox, payFeeInBtcToggleButtonsHBox);
-        else
-            makerFeeRowHBox.getChildren().addAll(makerFeeValueCurrencyBox);
-
-        GridPane.setRowIndex(makerFeeRowHBox, gridRow);
-        GridPane.setColumnIndex(makerFeeRowHBox, 1);
-        GridPane.setMargin(makerFeeRowHBox, new Insets(Layout.FIRST_ROW_AND_GROUP_DISTANCE, 0, 0, 0));
-        GridPane.setColumnSpan(makerFeeRowHBox, 2);
-        gridPane.getChildren().add(makerFeeRowHBox);
+        new FeeOptionWindow(model.makerFeeWithCode,
+                model.dataModel.isCurrencyForMakerFeeBtc(),
+                model.dataModel.isBsqForFeeAvailable(),
+                missingBsq,
+                navigation,
+                this::onShowPayFundsScreen)
+                .onSelectionChangedHandler(model::setIsCurrencyForMakerFeeBtc)
+                .onAction(this::onShowPayFundsScreen)
+                .hideCloseButton()
+                .show();
     }
 
     private void addBuyerSecurityDepositRow() {
         final double top = model.dataModel.isBsqForFeeAvailable() ? 0 : Layout.FIRST_ROW_AND_GROUP_DISTANCE;
         buyerSecurityDepositLabel = addLabel(gridPane, ++gridRow,
-            Res.getWithCol("shared.securityDepositBox.description", Res.get("shared.buyer")),
-            top);
+                Res.getWithCol("shared.securityDepositBox.description", Res.get("shared.buyer")),
+                top);
 
         Tuple3<HBox, InputTextField, Label> tuple = getEditableValueCurrencyBox(
-            Res.get("createOffer.securityDeposit.prompt"));
+                Res.get("createOffer.securityDeposit.prompt"));
         buyerSecurityDepositValueCurrencyBox = tuple.first;
         buyerSecurityDepositInputTextField = tuple.second;
-        buyerSecurityDepositBtcLabel = tuple.third;
-
-        if (makerFeeCurrencyLabel != null) {
-            buyerSecurityDepositBtcLabel.setMinWidth(makerFeeCurrencyLabel.getMinWidth());
-            buyerSecurityDepositBtcLabel.setMaxWidth(makerFeeCurrencyLabel.getMaxWidth());
-        }
+        Label buyerSecurityDepositBtcLabel = tuple.third;
 
         editOfferElements.add(buyerSecurityDepositInputTextField);
         editOfferElements.add(buyerSecurityDepositBtcLabel);
@@ -1000,34 +901,10 @@ public class CreateOfferView extends ActivatableViewAndModel<AnchorPane, CreateO
         gridPane.getChildren().add(buyerSecurityDepositValueCurrencyBox);
     }
 
-    private void addSellerSecurityDepositRow() {
-        sellerSecurityDepositLabel = addLabel(gridPane, ++gridRow,
-            Res.getWithCol("shared.securityDepositBox.description", Res.get("shared.seller")),
-            0);
-
-        Tuple3<HBox, TextField, Label> tuple = getNonEditableValueCurrencyBox();
-        sellerSecurityDepositValueCurrencyBox = tuple.first;
-        sellerSecurityDepositTextField = tuple.second;
-        sellerSecurityDepositTextField.setPrefWidth(buyerSecurityDepositInputTextField.getPrefWidth());
-        sellerSecurityDepositBtcLabel = tuple.third;
-        if (makerFeeCurrencyLabel != null) {
-            sellerSecurityDepositBtcLabel.setMinWidth(makerFeeCurrencyLabel.getMinWidth());
-            sellerSecurityDepositBtcLabel.setMaxWidth(makerFeeCurrencyLabel.getMaxWidth());
-        }
-
-        editOfferElements.add(sellerSecurityDepositTextField);
-        editOfferElements.add(buyerSecurityDepositBtcLabel);
-
-        GridPane.setRowIndex(sellerSecurityDepositValueCurrencyBox, gridRow);
-        GridPane.setColumnIndex(sellerSecurityDepositValueCurrencyBox, 1);
-        GridPane.setColumnSpan(sellerSecurityDepositValueCurrencyBox, 2);
-        gridPane.getChildren().add(sellerSecurityDepositValueCurrencyBox);
-    }
-
     private void addFundingGroup() {
         // don't increase gridRow as we removed button when this gets visible
         payFundsTitledGroupBg = addTitledGroupBg(gridPane, gridRow, 3,
-            Res.get("createOffer.fundsBox.title"), Layout.GROUP_DISTANCE);
+                Res.get("createOffer.fundsBox.title"), Layout.GROUP_DISTANCE);
         GridPane.setColumnSpan(payFundsTitledGroupBg, 3);
         payFundsTitledGroupBg.setVisible(false);
 
@@ -1056,9 +933,9 @@ public class CreateOfferView extends ActivatableViewAndModel<AnchorPane, CreateO
         qrCodeImageView.setStyle("-fx-cursor: hand;");
         Tooltip.install(qrCodeImageView, new Tooltip(Res.get("shared.openLargeQRWindow")));
         qrCodeImageView.setOnMouseClicked(e -> GUIUtil.showFeeInfoBeforeExecute(
-            () -> UserThread.runAfter(
-                () -> new QRCodeWindow(getBitcoinURI()).show(),
-                200, TimeUnit.MILLISECONDS)));
+                () -> UserThread.runAfter(
+                        () -> new QRCodeWindow(getBitcoinURI()).show(),
+                        200, TimeUnit.MILLISECONDS)));
         GridPane.setRowIndex(qrCodeImageView, gridRow);
         GridPane.setColumnIndex(qrCodeImageView, 2);
         GridPane.setRowSpan(qrCodeImageView, 3);
@@ -1066,14 +943,14 @@ public class CreateOfferView extends ActivatableViewAndModel<AnchorPane, CreateO
         gridPane.getChildren().add(qrCodeImageView);
 
         Tuple2<Label, AddressTextField> addressTuple = addLabelAddressTextField(gridPane, ++gridRow,
-            Res.get("shared.tradeWalletAddress"));
+                Res.get("shared.tradeWalletAddress"));
         addressLabel = addressTuple.first;
         addressLabel.setVisible(false);
         addressTextField = addressTuple.second;
         addressTextField.setVisible(false);
 
         Tuple2<Label, BalanceTextField> balanceTuple = addLabelBalanceTextField(gridPane, ++gridRow,
-            Res.get("shared.tradeWalletBalance"));
+                Res.get("shared.tradeWalletBalance"));
         balanceLabel = balanceTuple.first;
         balanceLabel.setVisible(false);
         balanceTextField = balanceTuple.second;
@@ -1112,13 +989,13 @@ public class CreateOfferView extends ActivatableViewAndModel<AnchorPane, CreateO
         cancelButton2.setOnAction(e -> {
             if (model.dataModel.getIsBtcWalletFunded().get()) {
                 new Popup<>().warning(Res.get("createOffer.warnCancelOffer"))
-                    .closeButtonText(Res.get("shared.no"))
-                    .actionButtonText(Res.get("shared.yesCancel"))
-                    .onAction(() -> {
-                        close();
-                        model.dataModel.swapTradeToSavings();
-                    })
-                    .show();
+                        .closeButtonText(Res.get("shared.no"))
+                        .actionButtonText(Res.get("shared.yesCancel"))
+                        .onAction(() -> {
+                            close();
+                            model.dataModel.swapTradeToSavings();
+                        })
+                        .show();
             } else {
                 close();
                 model.dataModel.swapTradeToSavings();
@@ -1140,7 +1017,7 @@ public class CreateOfferView extends ActivatableViewAndModel<AnchorPane, CreateO
     @NotNull
     private String getBitcoinURI() {
         return GUIUtil.getBitcoinURI(addressTextField.getAddress(), model.dataModel.getMissingCoin().get(),
-            model.getPaymentLabel());
+                model.getPaymentLabel());
     }
 
     private void addAmountPriceFields() {
@@ -1149,7 +1026,7 @@ public class CreateOfferView extends ActivatableViewAndModel<AnchorPane, CreateO
         HBox amountValueCurrencyBox = amountValueCurrencyBoxTuple.first;
         amountTextField = amountValueCurrencyBoxTuple.second;
         editOfferElements.add(amountTextField);
-        amountBtcLabel = amountValueCurrencyBoxTuple.third;
+        Label amountBtcLabel = amountValueCurrencyBoxTuple.third;
         editOfferElements.add(amountBtcLabel);
         Tuple2<Label, VBox> amountInputBoxTuple = getTradeInputBox(amountValueCurrencyBox, model.getAmountDescription());
         amountDescriptionLabel = amountInputBoxTuple.first;
@@ -1171,7 +1048,7 @@ public class CreateOfferView extends ActivatableViewAndModel<AnchorPane, CreateO
         marketBasedPriceLabel = priceAsPercentageTuple.third;
         editOfferElements.add(marketBasedPriceLabel);
         Tuple2<Label, VBox> priceAsPercentageInputBoxTuple = getTradeInputBox(priceAsPercentageValueCurrencyBox,
-            Res.get("shared.distanceInPercent"));
+                Res.get("shared.distanceInPercent"));
         priceAsPercentageInputBoxTuple.first.setPrefWidth(200);
         percentagePriceBox = priceAsPercentageInputBoxTuple.second;
 
@@ -1242,9 +1119,9 @@ public class CreateOfferView extends ActivatableViewAndModel<AnchorPane, CreateO
         useMarketBasedPriceButton.setMouseTransparent(!fixedPriceSelected);
 
         fixedPriceButton.setStyle(fixedPriceSelected ?
-            "-fx-background-color: -bs-blue-transparent" : "-fx-background-color: -bs-very-light-grey");
+                "-fx-background-color: -bs-blue-transparent" : "-fx-background-color: -bs-very-light-grey");
         useMarketBasedPriceButton.setStyle(!fixedPriceSelected ?
-            "-fx-background-color: -bs-blue-transparent" : "-fx-background-color: -bs-very-light-grey");
+                "-fx-background-color: -bs-blue-transparent" : "-fx-background-color: -bs-very-light-grey");
 
         if (fixedPriceSelected) {
             if (firstRowHBox.getChildren().contains(percentagePriceBox))
@@ -1270,7 +1147,7 @@ public class CreateOfferView extends ActivatableViewAndModel<AnchorPane, CreateO
     private void addSecondRow() {
         // price as fiat
         Tuple3<HBox, InputTextField, Label> priceValueCurrencyBoxTuple = getEditableValueCurrencyBox(
-            Res.get("createOffer.price.prompt"));
+                Res.get("createOffer.price.prompt"));
         HBox priceValueCurrencyBox = priceValueCurrencyBoxTuple.first;
         fixedPriceTextField = priceValueCurrencyBoxTuple.second;
         editOfferElements.add(fixedPriceTextField);
@@ -1286,15 +1163,15 @@ public class CreateOfferView extends ActivatableViewAndModel<AnchorPane, CreateO
         marketBasedPriceLabel.setStyle("-fx-alignment: center;");
 
         Tuple3<HBox, InputTextField, Label> amountValueCurrencyBoxTuple = getEditableValueCurrencyBox(
-            Res.get("createOffer.amount.prompt"));
+                Res.get("createOffer.amount.prompt"));
         HBox amountValueCurrencyBox = amountValueCurrencyBoxTuple.first;
         minAmountTextField = amountValueCurrencyBoxTuple.second;
         editOfferElements.add(minAmountTextField);
-        minAmountBtcLabel = amountValueCurrencyBoxTuple.third;
+        Label minAmountBtcLabel = amountValueCurrencyBoxTuple.third;
         editOfferElements.add(minAmountBtcLabel);
 
         Tuple2<Label, VBox> amountInputBoxTuple = getTradeInputBox(amountValueCurrencyBox,
-            Res.get("createOffer.amountPriceBox.minAmountDescription"));
+                Res.get("createOffer.amountPriceBox.minAmountDescription"));
 
         Label xLabel = new Label("x");
         xLabel.setFont(Font.font("Helvetica-Bold", 20));
@@ -1312,25 +1189,6 @@ public class CreateOfferView extends ActivatableViewAndModel<AnchorPane, CreateO
         gridPane.getChildren().add(secondRowHBox);
     }
 
-    private void updateFeeToggleButtons(boolean btcSelected) {
-        if (model.dataModel.isBsqForFeeAvailable()) {
-            model.setCurrencyForMakerFeeBtc(btcSelected);
-            if (btcSelected || model.dataModel.isBsqForFeeAvailable()) {
-                if (!payFeeInBtcButton.isSelected() && btcSelected)
-                    payFeeInBtcButton.setSelected(true);
-                if (payFeeInBsqButton.isSelected() && !btcSelected)
-                    payFeeInBsqButton.setSelected(false);
-
-                payFeeInBtcButton.setMouseTransparent(btcSelected);
-                payFeeInBsqButton.setMouseTransparent(!btcSelected);
-
-                payFeeInBtcButton.setStyle(btcSelected ?
-                    "-fx-background-color: -bs-blue-transparent" : "-fx-background-color: -bs-very-light-grey");
-                payFeeInBsqButton.setStyle(!btcSelected ?
-                    "-fx-background-color: -bs-blue-transparent" : "-fx-background-color: -bs-very-light-grey");
-            }
-        }
-    }
 
     ///////////////////////////////////////////////////////////////////////////////////////////
     // PayInfo
@@ -1372,8 +1230,8 @@ public class CreateOfferView extends ActivatableViewAndModel<AnchorPane, CreateO
             totalToPayInfoPopover.setDetachable(false);
             totalToPayInfoPopover.setArrowIndent(5);
             totalToPayInfoPopover.show(totalToPayInfoIconLabel.getScene().getWindow(),
-                getPopupPosition().getX(),
-                getPopupPosition().getY());
+                    getPopupPosition().getX(),
+                    getPopupPosition().getY());
         }
     }
 

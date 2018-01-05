@@ -367,6 +367,30 @@ public final class AltCoinAddressValidator extends InputValidator {
                     } catch (AddressFormatException e) {
                         return new ValidationResult(false, getErrorMessage(e));
                     }
+				case "CAGE":
+                    if (input.matches("^[D][a-zA-Z0-9]{26,34}$")) {
+                        //noinspection ConstantConditions
+                        try {
+                            Address.fromBase58(CageParams.get(), input);
+                            return new ValidationResult(true);
+                        } catch (AddressFormatException e) {
+                            return new ValidationResult(false, getErrorMessage(e));
+                        }
+                    } else {
+                        return regexTestFailed;
+                    }
+                case "CRED":
+                    if (!input.matches("^(0x)?[0-9a-fA-F]{40}$"))
+                        return regexTestFailed;
+                    else
+                        return new ValidationResult(true);
+                case "XSPEC":
+                    try {
+                        Address.fromBase58(XspecParams.get(), input);
+                        return new ValidationResult(true);
+                    } catch (AddressFormatException e) {
+                        return new ValidationResult(false, getErrorMessage(e));
+                    }
                     // Add new coins at the end...
                 default:
                     log.debug("Validation for AltCoinAddress not implemented yet. currencyCode: " + currencyCode);

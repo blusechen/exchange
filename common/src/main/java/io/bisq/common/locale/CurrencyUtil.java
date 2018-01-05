@@ -18,6 +18,7 @@
 package io.bisq.common.locale;
 
 import io.bisq.common.GlobalSettings;
+import io.bisq.common.app.DevEnv;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.*;
@@ -86,7 +87,8 @@ public class CurrencyUtil {
     public static List<CryptoCurrency> createAllSortedCryptoCurrenciesList() {
         final List<CryptoCurrency> result = new ArrayList<>();
 
-        // result.add(new CryptoCurrency("BSQ", "Bisq Token"));
+        if (DevEnv.DAO_TRADING_ACTIVATED)
+            result.add(new CryptoCurrency("BSQ", "Bisq Token"));
 
         if (!baseCurrencyCode.equals("BTC"))
             result.add(new CryptoCurrency("BTC", "Bitcoin"));
@@ -95,6 +97,7 @@ public class CurrencyUtil {
         result.add(new CryptoCurrency("BTG", "Bitcoin Gold"));
         result.add(new CryptoCurrency("BURST", "Burstcoin"));
         result.add(new CryptoCurrency("GBYTE", "Byte"));
+        result.add(new CryptoCurrency("CAGE", "Cagecoin"));
         result.add(new CryptoCurrency("XCP", "Counterparty"));
         result.add(new CryptoCurrency("XCN", "Cryptonite"));
         result.add(new CryptoCurrency("DNET", "DarkNet"));
@@ -136,15 +139,16 @@ public class CurrencyUtil {
         result.add(new CryptoCurrency("SC", "Siacoin"));
         result.add(new CryptoCurrency("SF", "Siafund"));
         result.add(new CryptoCurrency("SIB", "Sibcoin"));
+        result.add(new CryptoCurrency("XSPEC", "Spectrecoin"));
         result.add(new CryptoCurrency("STEEM", "STEEM"));
         result.add(new CryptoCurrency("TRC", "Terracoin"));
 
         result.add(new CryptoCurrency("UNO", "Unobtanium"));
+        result.add(new CryptoCurrency("CRED", "Verify", true));
         result.add(new CryptoCurrency("WAC", "WACoins"));
         result.add(new CryptoCurrency("XZC", "Zcoin"));
         result.add(new CryptoCurrency("ZEC", "Zcash"));
         result.add(new CryptoCurrency("ZEN", "ZenCash"));
-
         result.sort(TradeCurrency::compareTo);
 
         // Util for printing all altcoins for adding to FAQ page
@@ -162,7 +166,8 @@ public class CurrencyUtil {
 
     public static List<CryptoCurrency> getMainCryptoCurrencies() {
         final List<CryptoCurrency> result = new ArrayList<>();
-        //  result.add(new CryptoCurrency("BSQ", "Bisq Token"));
+        if (DevEnv.DAO_TRADING_ACTIVATED)
+            result.add(new CryptoCurrency("BSQ", "Bisq Token"));
         if (!baseCurrencyCode.equals("BTC"))
             result.add(new CryptoCurrency("BTC", "Bitcoin"));
         if (!baseCurrencyCode.equals("DASH"))
